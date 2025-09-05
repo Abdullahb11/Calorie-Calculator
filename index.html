@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calorie Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .food-card {
+            transition: all 0.3s ease;
+        }
+        .food-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .search-input {
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            transform: scale(1.02);
+        }
+        .result-card {
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-6xl font-bold text-white mb-4">
+                <i class="fas fa-calculator mr-3"></i>
+                Calorie Calculator
+            </h1>
+            <p class="text-xl text-white/80">Calculate calories for your favorite foods</p>
+        </div>
+
+        <!-- Search Section -->
+        <div class="max-w-2xl mx-auto mb-8">
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search for food items..." 
+                    class="w-full px-6 py-4 text-lg rounded-full border-0 shadow-lg search-input focus:outline-none focus:ring-4 focus:ring-white/30"
+                >
+                <i class="fas fa-search absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- Food Grid -->
+        <div id="foodGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            <!-- Food items will be populated here -->
+        </div>
+
+        <!-- Selected Food Section -->
+        <div id="selectedFoodSection" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl p-8 result-card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                    <i class="fas fa-utensils mr-2 text-blue-500"></i>
+                    Calculate Calories
+                </h2>
+                
+                <div id="selectedFoodInfo" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <!-- Selected food info will be displayed here -->
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (grams)</label>
+                        <input 
+                            type="number" 
+                            id="amountInput" 
+                            placeholder="Enter amount in grams" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            min="0"
+                            step="0.1"
+                        >
+                    </div>
+
+                    <div class="flex space-x-4">
+                        <button 
+                            id="calculateBtn" 
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
+                        >
+                            <i class="fas fa-calculator mr-2"></i>
+                            Calculate
+                        </button>
+                        <button 
+                            id="clearBtn" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
+                        >
+                            <i class="fas fa-times mr-2"></i>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Result Display -->
+                <div id="resultDisplay" class="hidden mt-6 p-6 bg-green-50 border-l-4 border-green-400 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-fire text-orange-500 text-2xl mr-3"></i>
+                        <div>
+                            <h3 class="text-lg font-bold text-green-800">Calorie Result</h3>
+                            <p id="calorieResult" class="text-2xl font-bold text-green-600"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-12">
+            <p class="text-white/60">
+                <i class="fas fa-heart text-red-400 mr-1"></i>
+                Made with love for healthy living
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Food database with calories per 100g
+        const foodDatabase = {
+            "egg": { calories: 140, name: "Egg", unit: "100g" },
+            "white bread": { calories: 267, name: "White Bread", unit: "100g" },
+            "oil": { calories: 900, name: "Oil", unit: "100g" },
+            "roti": { calories: 250, name: "Roti", unit: "100g" },
+            "sugar": { calories: 400, name: "Sugar", unit: "100g" },
+            "milk": { calories: 60, name: "Milk", unit: "100g" },
+            "potatoes": { calories: 77, name: "Potatoes", unit: "100g" },
+            "dahi": { calories: 61, name: "Dahi (Yogurt)", unit: "100g" },
+            "white rice cooked": { calories: 130, name: "White Rice (Cooked)", unit: "100g" },
+            "white rice uncooked": { calories: 370, name: "White Rice (Uncooked)", unit: "100g" },
+            "besan": { calories: 400, name: "Besan (Gram Flour)", unit: "100g" },
+            "watermelon": { calories: 30, name: "Watermelon", unit: "100g" },
+            "mayo": { calories: 700, name: "Mayonnaise", unit: "100g" },
+            "mayochup": { calories: 600, name: "Mayochup", unit: "100g" },
+            "ketchup": { calories: 120, name: "Ketchup", unit: "100g" },
+            "cucumber": { calories: 15, name: "Cucumber", unit: "100g" },
+            "carrot": { calories: 41, name: "Carrot", unit: "100g" },
+            "korneez popcorn": { calories: 500, name: "Korneez Popcorn", unit: "100g" },
+            "chicken": { calories: 150, name: "Chicken", unit: "100g" },
+            "beef": { calories: 250, name: "Beef", unit: "100g" },
+            "kidney beans raw": { calories: 330, name: "Kidney Beans (Raw)", unit: "100g" },
+            "chickpeas raw": { calories: 364, name: "Chickpeas (Raw)", unit: "100g" },
+            "jaggery": { calories: 385, name: "Jaggery", unit: "100g" },
+            "ladyfinger": { calories: 33, name: "Ladyfinger (Okra)", unit: "100g" },
+            "mango": { calories: 60, name: "Mango", unit: "100g" },
+            "flax seeds": { calories: 540, name: "Flax Seeds", unit: "100g" },
+            "banana": { calories: 89, name: "Banana", unit: "100g" },
+            "apple": { calories: 52, name: "Apple", unit: "100g" },
+            "milk pack cream": { calories: 340, name: "Milk Pack Cream", unit: "100g" },
+            "shawarma bread": { calories: 270, name: "Shawarma Bread", unit: "100g" }
+        };
+
+        let selectedFood = null;
+
+        // Initialize the app
+        function init() {
+            displayFoods(foodDatabase);
+            setupEventListeners();
+        }
+
+        // Display all foods in a grid
+        function displayFoods(foods) {
+            const foodGrid = document.getElementById('foodGrid');
+            foodGrid.innerHTML = '';
+
+            Object.entries(foods).forEach(([key, food]) => {
+                const foodCard = document.createElement('div');
+                foodCard.className = 'food-card bg-white rounded-xl p-6 shadow-lg cursor-pointer';
+                foodCard.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-utensils text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-800 mb-2">${food.name}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${food.calories} cal / ${food.unit}</p>
+                        <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition duration-300 transform hover:scale-105">
+                            Select
+                        </button>
+                    </div>
+                `;
+
+                foodCard.addEventListener('click', () => selectFood(key, food));
+                foodGrid.appendChild(foodCard);
+            });
+        }
+
+        // Filter foods based on search
+        function filterFoods(searchTerm) {
+            const filtered = {};
+            Object.entries(foodDatabase).forEach(([key, food]) => {
+                if (food.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    key.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    filtered[key] = food;
+                }
+            });
+            displayFoods(filtered);
+        }
+
+        // Select a food item
+        function selectFood(key, food) {
+            selectedFood = { key, ...food };
+            showSelectedFoodSection();
+        }
+
+        // Show the selected food section
+        function showSelectedFoodSection() {
+            const section = document.getElementById('selectedFoodSection');
+            const info = document.getElementById('selectedFoodInfo');
+            
+            info.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-utensils text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">${selectedFood.name}</h3>
+                        <p class="text-sm text-gray-600">${selectedFood.calories} calories per ${selectedFood.unit}</p>
+                    </div>
+                </div>
+            `;
+            
+            section.classList.remove('hidden');
+            section.scrollIntoView({ behavior: 'smooth' });
+            
+            // Focus on amount input
+            document.getElementById('amountInput').focus();
+        }
+
+        // Calculate calories
+        function calculateCalories() {
+            const amount = parseFloat(document.getElementById('amountInput').value);
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount in grams');
+                return;
+            }
+
+            if (!selectedFood) {
+                alert('Please select a food item first');
+                return;
+            }
+
+            // Calculate calories based on amount
+            const caloriesPerGram = selectedFood.calories / 100;
+            const totalCalories = (amount * caloriesPerGram).toFixed(1);
+
+            // Display result
+            const resultDisplay = document.getElementById('resultDisplay');
+            const calorieResult = document.getElementById('calorieResult');
+            
+            calorieResult.textContent = `${totalCalories} calories`;
+            resultDisplay.classList.remove('hidden');
+            
+            // Add pulse animation
+            resultDisplay.classList.add('pulse-animation');
+            setTimeout(() => {
+                resultDisplay.classList.remove('pulse-animation');
+            }, 2000);
+        }
+
+        // Clear selection
+        function clearSelection() {
+            selectedFood = null;
+            document.getElementById('selectedFoodSection').classList.add('hidden');
+            document.getElementById('amountInput').value = '';
+            document.getElementById('resultDisplay').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            displayFoods(foodDatabase);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const searchTerm = e.target.value;
+                if (searchTerm.trim() === '') {
+                    displayFoods(foodDatabase);
+                } else {
+                    filterFoods(searchTerm);
+                }
+            });
+
+            // Calculate button
+            document.getElementById('calculateBtn').addEventListener('click', calculateCalories);
+
+            // Clear button
+            document.getElementById('clearBtn').addEventListener('click', clearSelection);
+
+            // Enter key for amount input
+            document.getElementById('amountInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    calculateCalories();
+                }
+            });
+
+            // Enter key for search input
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
