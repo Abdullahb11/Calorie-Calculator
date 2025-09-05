@@ -44,7 +44,7 @@
 <body class="min-h-screen gradient-bg">
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-6">
             <h1 class="text-4xl md:text-6xl font-bold text-white mb-4">
                 <i class="fas fa-calculator mr-3"></i>
                 Calorie Calculator
@@ -52,6 +52,19 @@
             <p class="text-xl text-white/80">Calculate calories for your favorite foods</p>
         </div>
 
+        <!-- Tabs -->
+        <div class="max-w-2xl mx-auto mb-8">
+            <div class="flex items-center justify-center bg-white/10 backdrop-blur rounded-full p-1 shadow-lg">
+                <button id="tabCalorie" class="flex-1 px-6 py-2 rounded-full text-sm md:text-base font-semibold bg-white text-purple-700 shadow">
+                    Calorie Calculator
+                </button>
+                <button id="tabStandard" class="flex-1 px-6 py-2 rounded-full text-sm md:text-base font-semibold text-white hover:bg-white/20">
+                    Standard Calculator
+                </button>
+            </div>
+        </div>
+
+        <div id="caloriePage">
         <!-- Search Section -->
         <div class="max-w-2xl mx-auto mb-8">
             <div class="relative">
@@ -125,6 +138,46 @@
                 </div>
             </div>
         </div>
+        </div>
+
+        <!-- Standard Calculator Page -->
+        <div id="calcPage" class="hidden">
+            <div class="max-w-sm mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-6">
+                    <div class="mb-4">
+                        <div id="calcDisplay" class="w-full text-right text-3xl md:text-4xl font-bold text-gray-800 bg-gray-100 rounded-xl p-4 overflow-x-auto">
+                            0
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 select-none">
+                        <button data-action="clear" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">AC</button>
+                        <button data-action="invert" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">±</button>
+                        <button data-action="percent" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">%</button>
+                        <button data-action="op" data-op="/" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">÷</button>
+
+                        <button data-num="7" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">7</button>
+                        <button data-num="8" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">8</button>
+                        <button data-num="9" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">9</button>
+                        <button data-action="op" data-op="*" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">×</button>
+
+                        <button data-num="4" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">4</button>
+                        <button data-num="5" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">5</button>
+                        <button data-num="6" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">6</button>
+                        <button data-action="op" data-op="-" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">−</button>
+
+                        <button data-num="1" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">1</button>
+                        <button data-num="2" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">2</button>
+                        <button data-num="3" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">3</button>
+                        <button data-action="op" data-op="+" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">+</button>
+
+                        <button data-action="del" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">DEL</button>
+                        <button data-num="0" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">0</button>
+                        <button data-action="dot" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">.</button>
+                        <button data-action="equals" class="py-4 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700">=</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Footer -->
         <div class="text-center mt-12">
@@ -176,6 +229,8 @@
         function init() {
             displayFoods(foodDatabase);
             setupEventListeners();
+            setupTabs();
+            setupCalculator();
         }
 
         // Display all foods in a grid
@@ -318,6 +373,159 @@
                 if (e.key === 'Enter') {
                     e.preventDefault();
                 }
+            });
+        }
+
+        // Tabs logic
+        function setupTabs() {
+            const tabCalorie = document.getElementById('tabCalorie');
+            const tabStandard = document.getElementById('tabStandard');
+            const caloriePage = document.getElementById('caloriePage');
+            const calcPage = document.getElementById('calcPage');
+
+            function activateCalorie() {
+                caloriePage.classList.remove('hidden');
+                calcPage.classList.add('hidden');
+                tabCalorie.classList.add('bg-white','text-purple-700','shadow');
+                tabStandard.classList.remove('bg-white','text-purple-700','shadow');
+                tabStandard.classList.add('text-white');
+            }
+
+            function activateCalc() {
+                calcPage.classList.remove('hidden');
+                caloriePage.classList.add('hidden');
+                tabStandard.classList.add('bg-white','text-purple-700','shadow');
+                tabCalorie.classList.remove('bg-white','text-purple-700','shadow');
+                tabCalorie.classList.add('text-white');
+            }
+
+            tabCalorie.addEventListener('click', activateCalorie);
+            tabStandard.addEventListener('click', activateCalc);
+        }
+
+        // Standard calculator logic
+        function setupCalculator() {
+            const display = document.getElementById('calcDisplay');
+            let current = '0';
+            let previous = null;
+            let operator = null;
+            let justEvaluated = false;
+
+            function updateDisplay() {
+                display.textContent = current;
+            }
+
+            function inputDigit(d) {
+                if (justEvaluated) {
+                    current = d;
+                    justEvaluated = false;
+                } else if (current === '0') {
+                    current = d;
+                } else {
+                    current += d;
+                }
+                updateDisplay();
+            }
+
+            function inputDot() {
+                if (justEvaluated) {
+                    current = '0.';
+                    justEvaluated = false;
+                } else if (!current.includes('.')) {
+                    current += '.';
+                }
+                updateDisplay();
+            }
+
+            function clearAll() {
+                current = '0';
+                previous = null;
+                operator = null;
+                justEvaluated = false;
+                updateDisplay();
+            }
+
+            function delOne() {
+                if (justEvaluated) {
+                    clearAll();
+                    return;
+                }
+                if (current.length <= 1 || (current.length === 2 && current.startsWith('-'))) {
+                    current = '0';
+                } else {
+                    current = current.slice(0, -1);
+                }
+                updateDisplay();
+            }
+
+            function invertSign() {
+                if (current === '0') return;
+                current = current.startsWith('-') ? current.slice(1) : '-' + current;
+                updateDisplay();
+            }
+
+            function percent() {
+                const val = parseFloat(current);
+                if (!isNaN(val)) {
+                    current = (val / 100).toString();
+                    updateDisplay();
+                }
+            }
+
+            function setOperator(op) {
+                if (operator && !justEvaluated) {
+                    evaluate();
+                }
+                previous = parseFloat(current);
+                operator = op;
+                justEvaluated = false;
+                current = '0';
+            }
+
+            function evaluate() {
+                if (operator === null || previous === null) return;
+                const a = previous;
+                const b = parseFloat(current);
+                let result = 0;
+                switch (operator) {
+                    case '+': result = a + b; break;
+                    case '-': result = a - b; break;
+                    case '*': result = a * b; break;
+                    case '/': result = b === 0 ? 'Error' : a / b; break;
+                    default: return;
+                }
+                current = (result === 'Error') ? 'Error' : String(Number(result.toFixed(10)));
+                operator = null;
+                previous = null;
+                justEvaluated = true;
+                updateDisplay();
+            }
+
+            // Button listeners
+            document.querySelectorAll('#calcPage [data-num]').forEach(btn => {
+                btn.addEventListener('click', () => inputDigit(btn.getAttribute('data-num')));
+            });
+            document.querySelectorAll('#calcPage [data-action="dot"]').forEach(btn => btn.addEventListener('click', inputDot));
+            document.querySelectorAll('#calcPage [data-action="clear"]').forEach(btn => btn.addEventListener('click', clearAll));
+            document.querySelectorAll('#calcPage [data-action="del"]').forEach(btn => btn.addEventListener('click', delOne));
+            document.querySelectorAll('#calcPage [data-action="invert"]').forEach(btn => btn.addEventListener('click', invertSign));
+            document.querySelectorAll('#calcPage [data-action="percent"]').forEach(btn => btn.addEventListener('click', percent));
+            document.querySelectorAll('#calcPage [data-action="op"]').forEach(btn => {
+                btn.addEventListener('click', () => setOperator(btn.getAttribute('data-op')));
+            });
+            document.querySelectorAll('#calcPage [data-action="equals"]').forEach(btn => btn.addEventListener('click', evaluate));
+
+            // Keyboard support
+            document.addEventListener('keydown', (e) => {
+                const isCalcVisible = !document.getElementById('calcPage').classList.contains('hidden');
+                if (!isCalcVisible) return;
+                if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
+                else if (e.key === '.') inputDot();
+                else if (e.key === 'Backspace') delOne();
+                else if (e.key === 'Escape') clearAll();
+                else if (['+','-','*','/'].includes(e.key)) setOperator(e.key);
+                else if (e.key === 'Enter' || e.key === '=') evaluate();
+                else if (e.key === '%') percent();
             });
         }
 
