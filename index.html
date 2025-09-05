@@ -406,20 +406,30 @@
         // Standard calculator logic
         function setupCalculator() {
             const display = document.getElementById('calcDisplay');
-            let current = '0';
+            let current = '';
             let previous = null;
             let operator = null;
             let justEvaluated = false;
 
+            function formatExpression() {
+                if (operator !== null && previous !== null) {
+                    const right = current === '' ? '' : current;
+                    return `${String(previous)}${operator}${right}`;
+                }
+                return current === '' ? '0' : current;
+            }
+
             function updateDisplay() {
-                display.textContent = current;
+                display.textContent = formatExpression();
             }
 
             function inputDigit(d) {
                 if (justEvaluated) {
+                    previous = null;
+                    operator = null;
                     current = d;
                     justEvaluated = false;
-                } else if (current === '0') {
+                } else if (current === '0' || current === '') {
                     current = d;
                 } else {
                     current += d;
@@ -429,8 +439,12 @@
 
             function inputDot() {
                 if (justEvaluated) {
+                    previous = null;
+                    operator = null;
                     current = '0.';
                     justEvaluated = false;
+                } else if (current === '') {
+                    current = '0.';
                 } else if (!current.includes('.')) {
                     current += '.';
                 }
@@ -438,7 +452,7 @@
             }
 
             function clearAll() {
-                current = '0';
+                current = '';
                 previous = null;
                 operator = null;
                 justEvaluated = false;
@@ -450,8 +464,16 @@
                     clearAll();
                     return;
                 }
+                if (current === '') {
+                    // If there's no current input, allow removing operator
+                    if (operator !== null) {
+                        operator = null;
+                        updateDisplay();
+                    }
+                    return;
+                }
                 if (current.length <= 1 || (current.length === 2 && current.startsWith('-'))) {
-                    current = '0';
+                    current = '';
                 } else {
                     current = current.slice(0, -1);
                 }
@@ -459,7 +481,7 @@
             }
 
             function invertSign() {
-                if (current === '0') return;
+                if (current === '' || current === '0') return;
                 current = current.startsWith('-') ? current.slice(1) : '-' + current;
                 updateDisplay();
             }
@@ -473,19 +495,25 @@
             }
 
             function setOperator(op) {
-                if (operator && !justEvaluated) {
+                if (operator && !justEvaluated && current !== '') {
                     evaluate();
                 }
-                previous = parseFloat(current);
+                // If we just evaluated, continue with the result
+                if (justEvaluated) {
+                    justEvaluated = false;
+                }
+                if (current !== '') {
+                    previous = parseFloat(current);
+                }
                 operator = op;
-                justEvaluated = false;
-                current = '0';
+                current = '';
+                updateDisplay();
             }
 
             function evaluate() {
                 if (operator === null || previous === null) return;
                 const a = previous;
-                const b = parseFloat(current);
+                const b = current === '' ? previous : parseFloat(current);
                 let result = 0;
                 switch (operator) {
                     case '+': result = a + b; break;
