@@ -2,570 +2,573 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Calorie Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .gradient-bg {
+        :root { -webkit-tap-highlight-color: transparent; }
+        html, body { overscroll-behavior-y: contain; }
+        * { touch-action: manipulation; }
+
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
+        .food-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .food-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.12); }
+        .food-card:active { transform: scale(0.97); }
+
+        .search-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        .food-card {
-            transition: all 0.3s ease;
+
+        .search-input { transition: box-shadow 0.2s ease; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 25, 0.55);
+            backdrop-filter: blur(2px);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
         }
-        .food-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .modal-card {
+            transform: translateY(16px) scale(0.98);
+            transition: transform 0.2s ease;
+            max-height: 90vh;
+            overflow-y: auto;
         }
-        .search-input {
-            transition: all 0.3s ease;
+        .modal-overlay.open .modal-card { transform: translateY(0) scale(1); }
+
+        .pulse-animation { animation: pulse 1.4s ease-in-out 1; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
         }
-        .search-input:focus {
-            transform: scale(1.02);
+
+        .toast {
+            position: fixed;
+            bottom: 1.25rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            z-index: 60;
         }
-        .result-card {
-            animation: slideIn 0.5s ease-out;
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .chip {
+            transition: background 0.15s ease, color 0.15s ease;
         }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .chip[aria-pressed="true"] {
+            background: white;
+            color: #6d28d9;
         }
-        .pulse-animation {
-            animation: pulse 2s infinite;
-        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 8px; }
     </style>
 </head>
 <body class="min-h-screen gradient-bg">
-    <div class="container mx-auto px-4 py-8">
+    <div class="container mx-auto px-4 pb-10">
+
         <!-- Header -->
-        <div class="text-center mb-6">
-            <h1 class="text-4xl md:text-6xl font-bold text-white mb-4">
-                <i class="fas fa-calculator mr-3"></i>
-                Calorie Calculator
+        <div class="text-center pt-8 pb-4">
+            <h1 class="text-4xl md:text-6xl font-bold text-white mb-3">
+                <i class="fas fa-calculator mr-3"></i>Calorie Calculator
             </h1>
-            <p class="text-xl text-white/80">Calculate calories for your favorite foods</p>
+            <p class="text-lg md:text-xl text-white/80">Calculate calories for your favorite foods</p>
         </div>
 
         <!-- Tabs -->
-        <div class="max-w-2xl mx-auto mb-8">
-            <div class="flex items-center justify-center bg-white/10 backdrop-blur rounded-full p-1 shadow-lg">
-                <button id="tabCalorie" class="flex-1 px-6 py-2 rounded-full text-sm md:text-base font-semibold bg-white text-purple-700 shadow">
+        <div class="max-w-2xl mx-auto mb-4">
+            <div class="flex items-center justify-center bg-white/10 backdrop-blur rounded-full p-1 shadow-lg" role="tablist">
+                <button id="tabCalorie" role="tab" aria-selected="true" class="flex-1 px-6 py-2.5 rounded-full text-sm md:text-base font-semibold bg-white text-purple-700 shadow transition-colors">
                     Calorie Calculator
                 </button>
-                <button id="tabStandard" class="flex-1 px-6 py-2 rounded-full text-sm md:text-base font-semibold text-white hover:bg-white/20">
+                <button id="tabStandard" role="tab" aria-selected="false" class="flex-1 px-6 py-2.5 rounded-full text-sm md:text-base font-semibold text-white hover:bg-white/20 transition-colors">
                     Standard Calculator
                 </button>
             </div>
         </div>
 
         <div id="caloriePage">
-        <!-- Search Section -->
-        <div class="max-w-2xl mx-auto mb-8">
-            <div class="relative">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    placeholder="Search for food items..." 
-                    class="w-full px-6 py-4 text-lg rounded-full border-0 shadow-lg search-input focus:outline-none focus:ring-4 focus:ring-white/30"
-                >
-                <i class="fas fa-search absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            </div>
-        </div>
-
-        <!-- Food Grid -->
-        <div id="foodGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-            <!-- Food items will be populated here -->
-        </div>
-
-        <!-- Selected Food Section -->
-        <div id="selectedFoodSection" class="hidden max-w-2xl mx-auto">
-            <div class="bg-white rounded-2xl shadow-xl p-8 result-card">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                    <i class="fas fa-utensils mr-2 text-blue-500"></i>
-                    Calculate Calories
-                </h2>
-                
-                <div id="selectedFoodInfo" class="mb-6 p-4 bg-blue-50 rounded-lg">
-                    <!-- Selected food info will be displayed here -->
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (grams)</label>
-                        <input 
-                            type="number" 
-                            id="amountInput" 
-                            placeholder="Enter amount in grams" 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            min="0"
-                            step="0.1"
+            <!-- Sticky search + filters: always reachable, no scrolling back up -->
+            <div class="search-sticky">
+                <div class="max-w-2xl mx-auto">
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="Search for food items..."
+                            autocomplete="off"
+                            class="w-full px-6 py-4 text-lg rounded-full border-0 shadow-lg search-input focus:outline-none focus:ring-4 focus:ring-white/30"
                         >
+                        <i class="fas fa-search absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     </div>
-
-                    <div class="flex space-x-4">
-                        <button 
-                            id="calculateBtn" 
-                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
-                        >
-                            <i class="fas fa-calculator mr-2"></i>
-                            Calculate
-                        </button>
-                        <button 
-                            id="clearBtn" 
-                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
-                        >
-                            <i class="fas fa-times mr-2"></i>
-                            Clear
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Result Display -->
-                <div id="resultDisplay" class="hidden mt-6 p-6 bg-green-50 border-l-4 border-green-400 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-fire text-orange-500 text-2xl mr-3"></i>
-                        <div>
-                            <h3 class="text-lg font-bold text-green-800">Calorie Result</h3>
-                            <p id="calorieResult" class="text-2xl font-bold text-green-600"></p>
-                        </div>
-                    </div>
+                    <div id="categoryChips" class="flex flex-wrap gap-2 justify-center mt-3"></div>
                 </div>
             </div>
-        </div>
+
+            <!-- Food Grid -->
+            <div id="foodGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-4 mb-4"></div>
+            <p id="noResults" class="hidden text-center text-white/80 text-lg py-10">
+                <i class="fas fa-magnifying-glass mr-2"></i>No foods match your search.
+            </p>
         </div>
 
         <!-- Standard Calculator Page -->
         <div id="calcPage" class="hidden">
-            <div class="max-w-sm mx-auto">
+            <div class="max-w-sm mx-auto mt-2">
                 <div class="bg-white rounded-2xl shadow-xl p-6">
                     <div class="mb-4">
-                        <div id="calcDisplay" class="w-full text-right text-3xl md:text-4xl font-bold text-gray-800 bg-gray-100 rounded-xl p-4 overflow-x-auto">
-                            0
-                        </div>
+                        <div id="calcDisplay" class="w-full text-right text-3xl md:text-4xl font-bold text-gray-800 bg-gray-100 rounded-xl p-4 overflow-x-auto whitespace-nowrap">0</div>
                     </div>
                     <div class="grid grid-cols-4 gap-3 select-none">
-                        <button data-action="clear" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">AC</button>
-                        <button data-action="invert" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">±</button>
-                        <button data-action="percent" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">%</button>
-                        <button data-action="op" data-op="/" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">÷</button>
+                        <button data-action="clear" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 active:scale-95 transition-transform">AC</button>
+                        <button data-action="invert" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 active:scale-95 transition-transform">±</button>
+                        <button data-action="percent" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 active:scale-95 transition-transform">%</button>
+                        <button data-action="op" data-op="/" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 active:scale-95 transition-transform">÷</button>
 
-                        <button data-num="7" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">7</button>
-                        <button data-num="8" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">8</button>
-                        <button data-num="9" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">9</button>
-                        <button data-action="op" data-op="*" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">×</button>
+                        <button data-num="7" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">7</button>
+                        <button data-num="8" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">8</button>
+                        <button data-num="9" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">9</button>
+                        <button data-action="op" data-op="*" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 active:scale-95 transition-transform">×</button>
 
-                        <button data-num="4" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">4</button>
-                        <button data-num="5" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">5</button>
-                        <button data-num="6" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">6</button>
-                        <button data-action="op" data-op="-" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">−</button>
+                        <button data-num="4" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">4</button>
+                        <button data-num="5" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">5</button>
+                        <button data-num="6" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">6</button>
+                        <button data-action="op" data-op="-" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 active:scale-95 transition-transform">−</button>
 
-                        <button data-num="1" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">1</button>
-                        <button data-num="2" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">2</button>
-                        <button data-num="3" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">3</button>
-                        <button data-action="op" data-op="+" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200">+</button>
+                        <button data-num="1" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">1</button>
+                        <button data-num="2" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">2</button>
+                        <button data-num="3" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">3</button>
+                        <button data-action="op" data-op="+" class="py-4 rounded-xl bg-purple-100 text-purple-700 font-bold hover:bg-purple-200 active:scale-95 transition-transform">+</button>
 
-                        <button data-action="del" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300">DEL</button>
-                        <button data-num="0" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">0</button>
-                        <button data-action="dot" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200">.</button>
-                        <button data-action="equals" class="py-4 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700">=</button>
+                        <button data-action="del" class="py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 active:scale-95 transition-transform">DEL</button>
+                        <button data-num="0" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">0</button>
+                        <button data-action="dot" class="py-4 rounded-xl bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 active:scale-95 transition-transform">.</button>
+                        <button data-action="equals" class="py-4 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-transform">=</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="text-center mt-12">
-            <p class="text-white/60">
-                <i class="fas fa-heart text-red-400 mr-1"></i>
-                Made with love for healthy living
-            </p>
+        <div class="text-center mt-10">
+            <p class="text-white/60"><i class="fas fa-heart text-red-400 mr-1"></i>Made with love for healthy living</p>
         </div>
     </div>
 
-    <script>
-        // Food database with calories per 100g
-        const foodDatabase = {
-            "egg": { calories: 140, name: "Egg", unit: "100g" },
-            "white bread": { calories: 267, name: "White Bread", unit: "100g" },
-            "oil": { calories: 900, name: "Oil", unit: "100g" },
-            "roti": { calories: 250, name: "Roti", unit: "100g" },
-            "sugar": { calories: 400, name: "Sugar", unit: "100g" },
-            "milk": { calories: 60, name: "Milk", unit: "100g" },
-            "potatoes": { calories: 77, name: "Potatoes", unit: "100g" },
-            "dahi": { calories: 61, name: "Dahi (Yogurt)", unit: "100g" },
-            "white rice cooked": { calories: 130, name: "White Rice (Cooked)", unit: "100g" },
-            "white rice uncooked": { calories: 370, name: "White Rice (Uncooked)", unit: "100g" },
-            "besan": { calories: 400, name: "Besan (Gram Flour)", unit: "100g" },
-            "watermelon": { calories: 30, name: "Watermelon", unit: "100g" },
-            "mayo": { calories: 700, name: "Mayonnaise", unit: "100g" },
-            "mayochup": { calories: 600, name: "Mayochup", unit: "100g" },
-            "ketchup": { calories: 120, name: "Ketchup", unit: "100g" },
-            "cucumber": { calories: 15, name: "Cucumber", unit: "100g" },
-            "carrot": { calories: 41, name: "Carrot", unit: "100g" },
-            "korneez popcorn": { calories: 500, name: "Korneez Popcorn", unit: "100g" },
-            "chicken": { calories: 150, name: "Chicken", unit: "100g" },
-            "beef": { calories: 250, name: "Beef", unit: "100g" },
-            "kidney beans raw": { calories: 330, name: "Kidney Beans (Raw)", unit: "100g" },
-            "chickpeas raw": { calories: 364, name: "Chickpeas (Raw)", unit: "100g" },
-            "jaggery": { calories: 385, name: "Jaggery", unit: "100g" },
-            "ladyfinger": { calories: 33, name: "Ladyfinger (Okra)", unit: "100g" },
-            "mango": { calories: 60, name: "Mango", unit: "100g" },
-            "flax seeds": { calories: 540, name: "Flax Seeds", unit: "100g" },
-            "banana": { calories: 89, name: "Banana", unit: "100g" },
-            "apple": { calories: 52, name: "Apple", unit: "100g" },
-            "milk pack cream": { calories: 340, name: "Milk Pack Cream", unit: "100g" },
-            "shawarma bread": { calories: 270, name: "Shawarma Bread", unit: "100g" },
-            "Dairy Milk Chocolate": { calories: 535, name: "Dairy Milk Chocolate", unit: "100g" },
-            "Cauliflower(Gobi)": { calories: 25, name: "Cauliflower", unit: "100g" },
-            "Dates (Khajoor)": { calories: 277, name: "Dates", unit: "100g" },
-            "Jam-e-Shirin": { calories: 310, name: "Jam-e-Shirin (Syrup)", unit: "100g" },
-            "Tang": { calories: 360, name: "Tang (Powder)", unit: "100g" }
+    <!-- Food selection / calculate MODAL: appears over the page so users never have to scroll back up -->
+    <div id="foodModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalFoodName">
+        <div class="modal-card bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative">
+            <button id="modalClose" aria-label="Close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl active:scale-90 transition-transform">
+                <i class="fas fa-times"></i>
+            </button>
 
-            
+            <h2 class="text-2xl font-bold text-gray-800 mb-5 text-center">
+                <i class="fas fa-utensils mr-2 text-blue-500"></i>Calculate Calories
+            </h2>
+
+            <div class="mb-5 p-4 bg-blue-50 rounded-lg flex items-center">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-4 shrink-0">
+                    <i class="fas fa-utensils text-white"></i>
+                </div>
+                <div>
+                    <h3 id="modalFoodName" class="font-bold text-gray-800"></h3>
+                    <p id="modalFoodMeta" class="text-sm text-gray-600"></p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="amountInput" class="block text-sm font-medium text-gray-700 mb-2">Amount (grams)</label>
+                    <input
+                        type="number"
+                        id="amountInput"
+                        inputmode="decimal"
+                        placeholder="Enter amount in grams"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min="0"
+                        step="0.1"
+                    >
+                    <p id="amountError" class="hidden text-sm text-red-500 mt-1">Please enter a valid amount greater than 0.</p>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button id="calculateBtn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-transform active:scale-95">
+                        <i class="fas fa-calculator mr-2"></i>Calculate
+                    </button>
+                    <button id="clearBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-transform active:scale-95">
+                        <i class="fas fa-rotate-left mr-2"></i>Reset
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultDisplay" class="hidden mt-6 p-5 bg-green-50 border-l-4 border-green-400 rounded-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-fire text-orange-500 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-base font-bold text-green-800">Result</h3>
+                        <p id="calorieResult" class="text-2xl font-bold text-green-600"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightweight toast for quick feedback instead of alert() popups -->
+    <div id="toast" class="toast bg-gray-900 text-white px-5 py-3 rounded-full shadow-xl text-sm font-medium"></div>
+
+    <script>
+        // ---------- Data ----------
+        const foodDatabase = {
+            "egg":                    { calories: 140, name: "Egg",                    category: "Protein" },
+            "chicken":                { calories: 150, name: "Chicken",                category: "Protein" },
+            "beef":                   { calories: 250, name: "Beef",                   category: "Protein" },
+            "milk":                   { calories: 60,  name: "Milk",                   category: "Dairy" },
+            "dahi":                   { calories: 61,  name: "Dahi (Yogurt)",          category: "Dairy" },
+            "milk pack cream":        { calories: 340, name: "Milk Pack Cream",        category: "Dairy" },
+            "white bread":            { calories: 267, name: "White Bread",            category: "Grains" },
+            "roti":                   { calories: 250, name: "Roti",                   category: "Grains" },
+            "white rice cooked":      { calories: 130, name: "White Rice (Cooked)",    category: "Grains" },
+            "white rice uncooked":    { calories: 370, name: "White Rice (Uncooked)",  category: "Grains" },
+            "shawarma bread":         { calories: 270, name: "Shawarma Bread",         category: "Grains" },
+            "besan":                  { calories: 400, name: "Besan (Gram Flour)",     category: "Grains" },
+            "kidney beans raw":       { calories: 330, name: "Kidney Beans (Raw)",     category: "Grains" },
+            "chickpeas raw":          { calories: 364, name: "Chickpeas (Raw)",        category: "Grains" },
+            "flax seeds":             { calories: 540, name: "Flax Seeds",             category: "Grains" },
+            "oil":                    { calories: 900, name: "Oil",                    category: "Fats & Sauces" },
+            "mayo":                   { calories: 700, name: "Mayonnaise",             category: "Fats & Sauces" },
+            "mayochup":               { calories: 600, name: "Mayochup",               category: "Fats & Sauces" },
+            "ketchup":                { calories: 120, name: "Ketchup",                category: "Fats & Sauces" },
+            "jam-e-shirin":           { calories: 310, name: "Jam-e-Shirin (Syrup)",   category: "Fats & Sauces" },
+            "sugar":                  { calories: 400, name: "Sugar",                  category: "Sweets" },
+            "jaggery":                { calories: 385, name: "Jaggery",                category: "Sweets" },
+            "dairy milk chocolate":   { calories: 535, name: "Dairy Milk Chocolate",   category: "Sweets" },
+            "tang":                   { calories: 360, name: "Tang (Powder)",          category: "Sweets" },
+            "korneez popcorn":        { calories: 500, name: "Korneez Popcorn",        category: "Sweets" },
+            "potatoes":               { calories: 77,  name: "Potatoes",               category: "Vegetables" },
+            "cucumber":               { calories: 15,  name: "Cucumber",               category: "Vegetables" },
+            "carrot":                 { calories: 41,  name: "Carrot",                 category: "Vegetables" },
+            "ladyfinger":             { calories: 33,  name: "Ladyfinger (Okra)",      category: "Vegetables" },
+            "cauliflower":            { calories: 25,  name: "Cauliflower (Gobi)",     category: "Vegetables" },
+            "watermelon":             { calories: 30,  name: "Watermelon",             category: "Fruits" },
+            "mango":                  { calories: 60,  name: "Mango",                  category: "Fruits" },
+            "banana":                 { calories: 89,  name: "Banana",                 category: "Fruits" },
+            "apple":                  { calories: 52,  name: "Apple",                  category: "Fruits" },
+            "dates":                  { calories: 277, name: "Dates (Khajoor)",        category: "Fruits" }
         };
 
+        const categories = ["All", ...new Set(Object.values(foodDatabase).map(f => f.category))];
+        let activeCategory = "All";
         let selectedFood = null;
 
-        // Initialize the app
+        const $ = (id) => document.getElementById(id);
+
+        // ---------- Init ----------
         function init() {
-            displayFoods(foodDatabase);
-            setupEventListeners();
+            renderCategoryChips();
+            renderFoods();
+            setupSearch();
+            setupModal();
             setupTabs();
             setupCalculator();
         }
 
-        // Display all foods in a grid
-        function displayFoods(foods) {
-            const foodGrid = document.getElementById('foodGrid');
-            foodGrid.innerHTML = '';
+        // ---------- Category chips ----------
+        function renderCategoryChips() {
+            const wrap = $("categoryChips");
+            wrap.innerHTML = "";
+            categories.forEach(cat => {
+                const btn = document.createElement("button");
+                btn.textContent = cat;
+                btn.setAttribute("aria-pressed", cat === activeCategory ? "true" : "false");
+                btn.className = "chip px-4 py-1.5 rounded-full text-sm font-medium bg-white/15 text-white hover:bg-white/25";
+                btn.addEventListener("click", () => {
+                    activeCategory = cat;
+                    Array.from(wrap.children).forEach(c => c.setAttribute("aria-pressed", c.textContent === cat ? "true" : "false"));
+                    renderFoods();
+                });
+                wrap.appendChild(btn);
+            });
+        }
 
-            Object.entries(foods).forEach(([key, food]) => {
-                const foodCard = document.createElement('div');
-                foodCard.className = 'food-card bg-white rounded-xl p-6 shadow-lg cursor-pointer';
-                foodCard.innerHTML = `
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-utensils text-white text-xl"></i>
-                        </div>
-                        <h3 class="font-bold text-gray-800 mb-2">${food.name}</h3>
-                        <p class="text-sm text-gray-600 mb-2">${food.calories} cal / ${food.unit}</p>
-                        <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition duration-300 transform hover:scale-105">
-                            Select
-                        </button>
+        // ---------- Food grid ----------
+        function getFilteredFoods() {
+            const term = $("searchInput").value.trim().toLowerCase();
+            return Object.entries(foodDatabase).filter(([key, food]) => {
+                const matchesTerm = !term || food.name.toLowerCase().includes(term) || key.toLowerCase().includes(term);
+                const matchesCategory = activeCategory === "All" || food.category === activeCategory;
+                return matchesTerm && matchesCategory;
+            });
+        }
+
+        function renderFoods() {
+            const grid = $("foodGrid");
+            const noResults = $("noResults");
+            const entries = getFilteredFoods();
+
+            grid.innerHTML = "";
+            noResults.classList.toggle("hidden", entries.length > 0);
+
+            entries.forEach(([key, food]) => {
+                const card = document.createElement("button");
+                card.type = "button";
+                card.className = "food-card bg-white rounded-xl p-5 shadow-lg text-center";
+                card.innerHTML = `
+                    <div class="w-14 h-14 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-utensils text-white text-lg"></i>
                     </div>
+                    <h3 class="font-bold text-gray-800 mb-1">${food.name}</h3>
+                    <p class="text-sm text-gray-600">${food.calories} cal / 100g</p>
                 `;
-
-                foodCard.addEventListener('click', () => selectFood(key, food));
-                foodGrid.appendChild(foodCard);
+                card.addEventListener("click", () => openFoodModal(key, food));
+                grid.appendChild(card);
             });
         }
 
-        // Filter foods based on search
-        function filterFoods(searchTerm) {
-            const filtered = {};
-            Object.entries(foodDatabase).forEach(([key, food]) => {
-                if (food.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                    key.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    filtered[key] = food;
-                }
+        // ---------- Search (debounced, no full-grid jank on every keystroke) ----------
+        function setupSearch() {
+            let debounceTimer;
+            $("searchInput").addEventListener("input", () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(renderFoods, 120);
             });
-            displayFoods(filtered);
+            $("searchInput").addEventListener("keypress", (e) => {
+                if (e.key === "Enter") e.preventDefault();
+            });
         }
 
-        // Select a food item
-        function selectFood(key, food) {
+        // ---------- Modal (fixes "scroll all the way back up" issue) ----------
+        function openFoodModal(key, food) {
             selectedFood = { key, ...food };
-            showSelectedFoodSection();
+            $("modalFoodName").textContent = food.name;
+            $("modalFoodMeta").textContent = `${food.calories} calories per 100g · ${food.category}`;
+            $("amountInput").value = "";
+            $("amountError").classList.add("hidden");
+            $("resultDisplay").classList.add("hidden");
+
+            const overlay = $("foodModal");
+            overlay.classList.add("open");
+            document.body.style.overflow = "hidden"; // lock background scroll while modal is open
+
+            // Delay focus slightly so the mobile keyboard doesn't fight the modal's open transition
+            setTimeout(() => $("amountInput").focus({ preventScroll: true }), 150);
         }
 
-        // Show the selected food section
-        function showSelectedFoodSection() {
-            const section = document.getElementById('selectedFoodSection');
-            const info = document.getElementById('selectedFoodInfo');
-            
-            info.innerHTML = `
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-4">
-                        <i class="fas fa-utensils text-white"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-gray-800">${selectedFood.name}</h3>
-                        <p class="text-sm text-gray-600">${selectedFood.calories} calories per ${selectedFood.unit}</p>
-                    </div>
-                </div>
-            `;
-            
-            section.classList.remove('hidden');
-            section.scrollIntoView({ behavior: 'smooth' });
-            
-            // Focus on amount input
-            document.getElementById('amountInput').focus();
+        function closeFoodModal() {
+            $("foodModal").classList.remove("open");
+            document.body.style.overflow = "";
+            selectedFood = null;
         }
 
-        // Calculate calories
+        function setupModal() {
+            $("modalClose").addEventListener("click", closeFoodModal);
+            $("foodModal").addEventListener("click", (e) => {
+                if (e.target.id === "foodModal") closeFoodModal();
+            });
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape" && $("foodModal").classList.contains("open")) closeFoodModal();
+            });
+
+            $("calculateBtn").addEventListener("click", calculateCalories);
+            $("clearBtn").addEventListener("click", () => {
+                $("amountInput").value = "";
+                $("amountError").classList.add("hidden");
+                $("resultDisplay").classList.add("hidden");
+                $("amountInput").focus({ preventScroll: true });
+            });
+            $("amountInput").addEventListener("keypress", (e) => {
+                if (e.key === "Enter") { e.preventDefault(); calculateCalories(); }
+            });
+            $("amountInput").addEventListener("input", () => $("amountError").classList.add("hidden"));
+        }
+
         function calculateCalories() {
-            const amount = parseFloat(document.getElementById('amountInput').value);
-            
-            if (!amount || amount <= 0) {
-                alert('Please enter a valid amount in grams');
+            const amount = parseFloat($("amountInput").value);
+
+            if (!amount || amount <= 0 || Number.isNaN(amount)) {
+                $("amountError").classList.remove("hidden");
                 return;
             }
+            if (!selectedFood) return;
 
-            if (!selectedFood) {
-                alert('Please select a food item first');
-                return;
-            }
-
-            // Calculate calories based on amount
             const caloriesPerGram = selectedFood.calories / 100;
             const totalCalories = (amount * caloriesPerGram).toFixed(1);
 
-            // Display result
-            const resultDisplay = document.getElementById('resultDisplay');
-            const calorieResult = document.getElementById('calorieResult');
-            
-            calorieResult.textContent = `${totalCalories} calories`;
-            resultDisplay.classList.remove('hidden');
-            
-            // Add pulse animation
-            resultDisplay.classList.add('pulse-animation');
-            setTimeout(() => {
-                resultDisplay.classList.remove('pulse-animation');
-            }, 2000);
+            $("calorieResult").textContent = `${totalCalories} calories`;
+            const resultDisplay = $("resultDisplay");
+            resultDisplay.classList.remove("hidden");
+            resultDisplay.classList.remove("pulse-animation");
+            void resultDisplay.offsetWidth; // restart animation reliably
+            resultDisplay.classList.add("pulse-animation");
         }
 
-        // Clear selection
-        function clearSelection() {
-            selectedFood = null;
-            document.getElementById('selectedFoodSection').classList.add('hidden');
-            document.getElementById('amountInput').value = '';
-            document.getElementById('resultDisplay').classList.add('hidden');
-            document.getElementById('searchInput').value = '';
-            displayFoods(foodDatabase);
+        function showToast(msg) {
+            const t = $("toast");
+            t.textContent = msg;
+            t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), 1800);
         }
 
-        // Setup event listeners
-        function setupEventListeners() {
-            // Search functionality
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                const searchTerm = e.target.value;
-                if (searchTerm.trim() === '') {
-                    displayFoods(foodDatabase);
-                } else {
-                    filterFoods(searchTerm);
-                }
-            });
-
-            // Calculate button
-            document.getElementById('calculateBtn').addEventListener('click', calculateCalories);
-
-            // Clear button
-            document.getElementById('clearBtn').addEventListener('click', clearSelection);
-
-            // Enter key for amount input
-            document.getElementById('amountInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    calculateCalories();
-                }
-            });
-
-            // Enter key for search input
-            document.getElementById('searchInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                }
-            });
-        }
-
-        // Tabs logic
+        // ---------- Tabs ----------
         function setupTabs() {
-            const tabCalorie = document.getElementById('tabCalorie');
-            const tabStandard = document.getElementById('tabStandard');
-            const caloriePage = document.getElementById('caloriePage');
-            const calcPage = document.getElementById('calcPage');
+            const tabCalorie = $("tabCalorie");
+            const tabStandard = $("tabStandard");
+            const caloriePage = $("caloriePage");
+            const calcPage = $("calcPage");
 
             function activateCalorie() {
-                caloriePage.classList.remove('hidden');
-                calcPage.classList.add('hidden');
-                tabCalorie.classList.add('bg-white','text-purple-700','shadow');
-                tabStandard.classList.remove('bg-white','text-purple-700','shadow');
-                tabStandard.classList.add('text-white');
+                caloriePage.classList.remove("hidden");
+                calcPage.classList.add("hidden");
+                tabCalorie.classList.add("bg-white", "text-purple-700", "shadow");
+                tabCalorie.setAttribute("aria-selected", "true");
+                tabStandard.classList.remove("bg-white", "text-purple-700", "shadow");
+                tabStandard.classList.add("text-white");
+                tabStandard.setAttribute("aria-selected", "false");
             }
 
             function activateCalc() {
-                calcPage.classList.remove('hidden');
-                caloriePage.classList.add('hidden');
-                tabStandard.classList.add('bg-white','text-purple-700','shadow');
-                tabCalorie.classList.remove('bg-white','text-purple-700','shadow');
-                tabCalorie.classList.add('text-white');
+                closeFoodModal();
+                calcPage.classList.remove("hidden");
+                caloriePage.classList.add("hidden");
+                tabStandard.classList.add("bg-white", "text-purple-700", "shadow");
+                tabStandard.setAttribute("aria-selected", "true");
+                tabCalorie.classList.remove("bg-white", "text-purple-700", "shadow");
+                tabCalorie.classList.add("text-white");
+                tabCalorie.setAttribute("aria-selected", "false");
             }
 
-            tabCalorie.addEventListener('click', activateCalorie);
-            tabStandard.addEventListener('click', activateCalc);
+            tabCalorie.addEventListener("click", activateCalorie);
+            tabStandard.addEventListener("click", activateCalc);
         }
 
-        // Standard calculator logic
+        // ---------- Standard calculator ----------
         function setupCalculator() {
-            const display = document.getElementById('calcDisplay');
-            let current = '';
+            const display = $("calcDisplay");
+            let current = "";
             let previous = null;
             let operator = null;
             let justEvaluated = false;
 
             function formatExpression() {
                 if (operator !== null && previous !== null) {
-                    const right = current === '' ? '' : current;
+                    const right = current === "" ? "" : current;
                     return `${String(previous)}${operator}${right}`;
                 }
-                return current === '' ? '0' : current;
+                return current === "" ? "0" : current;
             }
 
-            function updateDisplay() {
-                display.textContent = formatExpression();
-            }
+            function updateDisplay() { display.textContent = formatExpression(); }
 
             function inputDigit(d) {
-                if (justEvaluated) {
-                    previous = null;
-                    operator = null;
-                    current = d;
-                    justEvaluated = false;
-                } else if (current === '0' || current === '') {
-                    current = d;
-                } else {
-                    current += d;
-                }
+                if (justEvaluated) { previous = null; operator = null; current = d; justEvaluated = false; }
+                else if (current === "0" || current === "") current = d;
+                else current += d;
                 updateDisplay();
             }
 
             function inputDot() {
-                if (justEvaluated) {
-                    previous = null;
-                    operator = null;
-                    current = '0.';
-                    justEvaluated = false;
-                } else if (current === '') {
-                    current = '0.';
-                } else if (!current.includes('.')) {
-                    current += '.';
-                }
+                if (justEvaluated) { previous = null; operator = null; current = "0."; justEvaluated = false; }
+                else if (current === "") current = "0.";
+                else if (!current.includes(".")) current += ".";
                 updateDisplay();
             }
 
-            function clearAll() {
-                current = '';
-                previous = null;
-                operator = null;
-                justEvaluated = false;
-                updateDisplay();
-            }
+            function clearAll() { current = ""; previous = null; operator = null; justEvaluated = false; updateDisplay(); }
 
             function delOne() {
-                if (justEvaluated) {
-                    clearAll();
+                if (justEvaluated) { clearAll(); return; }
+                if (current === "") {
+                    if (operator !== null) { operator = null; updateDisplay(); }
                     return;
                 }
-                if (current === '') {
-                    // If there's no current input, allow removing operator
-                    if (operator !== null) {
-                        operator = null;
-                        updateDisplay();
-                    }
-                    return;
-                }
-                if (current.length <= 1 || (current.length === 2 && current.startsWith('-'))) {
-                    current = '';
-                } else {
-                    current = current.slice(0, -1);
-                }
+                current = (current.length <= 1 || (current.length === 2 && current.startsWith("-"))) ? "" : current.slice(0, -1);
                 updateDisplay();
             }
 
             function invertSign() {
-                if (current === '' || current === '0') return;
-                current = current.startsWith('-') ? current.slice(1) : '-' + current;
+                if (current === "" || current === "0") return;
+                current = current.startsWith("-") ? current.slice(1) : "-" + current;
                 updateDisplay();
             }
 
             function percent() {
                 const val = parseFloat(current);
-                if (!isNaN(val)) {
-                    current = (val / 100).toString();
-                    updateDisplay();
-                }
+                if (!isNaN(val)) { current = (val / 100).toString(); updateDisplay(); }
             }
 
             function setOperator(op) {
-                if (operator && !justEvaluated && current !== '') {
-                    evaluate();
-                }
-                // If we just evaluated, continue with the result
-                if (justEvaluated) {
-                    justEvaluated = false;
-                }
-                if (current !== '') {
-                    previous = parseFloat(current);
-                }
+                if (operator && !justEvaluated && current !== "") evaluate();
+                if (justEvaluated) justEvaluated = false;
+                if (current !== "") previous = parseFloat(current);
                 operator = op;
-                current = '';
+                current = "";
                 updateDisplay();
             }
 
             function evaluate() {
                 if (operator === null || previous === null) return;
                 const a = previous;
-                const b = current === '' ? previous : parseFloat(current);
-                let result = 0;
+                const b = current === "" ? previous : parseFloat(current);
+                let result;
                 switch (operator) {
-                    case '+': result = a + b; break;
-                    case '-': result = a - b; break;
-                    case '*': result = a * b; break;
-                    case '/': result = b === 0 ? 'Error' : a / b; break;
+                    case "+": result = a + b; break;
+                    case "-": result = a - b; break;
+                    case "*": result = a * b; break;
+                    case "/": result = b === 0 ? "Error" : a / b; break;
                     default: return;
                 }
-                current = (result === 'Error') ? 'Error' : String(Number(result.toFixed(10)));
+                current = (result === "Error") ? "Error" : String(Number(result.toFixed(10)));
                 operator = null;
                 previous = null;
                 justEvaluated = true;
                 updateDisplay();
             }
 
-            // Button listeners
-            document.querySelectorAll('#calcPage [data-num]').forEach(btn => {
-                btn.addEventListener('click', () => inputDigit(btn.getAttribute('data-num')));
+            // Single delegated listener instead of many per-button listeners — more reliable,
+            // and avoids the accidental double-fire some browsers produce on fast repeated taps.
+            document.getElementById("calcPage").addEventListener("click", (e) => {
+                const btn = e.target.closest("button");
+                if (!btn) return;
+                if (btn.dataset.num !== undefined) inputDigit(btn.dataset.num);
+                else if (btn.dataset.action === "dot") inputDot();
+                else if (btn.dataset.action === "clear") clearAll();
+                else if (btn.dataset.action === "del") delOne();
+                else if (btn.dataset.action === "invert") invertSign();
+                else if (btn.dataset.action === "percent") percent();
+                else if (btn.dataset.action === "op") setOperator(btn.dataset.op);
+                else if (btn.dataset.action === "equals") evaluate();
             });
-            document.querySelectorAll('#calcPage [data-action="dot"]').forEach(btn => btn.addEventListener('click', inputDot));
-            document.querySelectorAll('#calcPage [data-action="clear"]').forEach(btn => btn.addEventListener('click', clearAll));
-            document.querySelectorAll('#calcPage [data-action="del"]').forEach(btn => btn.addEventListener('click', delOne));
-            document.querySelectorAll('#calcPage [data-action="invert"]').forEach(btn => btn.addEventListener('click', invertSign));
-            document.querySelectorAll('#calcPage [data-action="percent"]').forEach(btn => btn.addEventListener('click', percent));
-            document.querySelectorAll('#calcPage [data-action="op"]').forEach(btn => {
-                btn.addEventListener('click', () => setOperator(btn.getAttribute('data-op')));
-            });
-            document.querySelectorAll('#calcPage [data-action="equals"]').forEach(btn => btn.addEventListener('click', evaluate));
 
-            // Keyboard support
-            document.addEventListener('keydown', (e) => {
-                const isCalcVisible = !document.getElementById('calcPage').classList.contains('hidden');
+            document.addEventListener("keydown", (e) => {
+                const isCalcVisible = !document.getElementById("calcPage").classList.contains("hidden");
                 if (!isCalcVisible) return;
-                if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
-                else if (e.key === '.') inputDot();
-                else if (e.key === 'Backspace') delOne();
-                else if (e.key === 'Escape') clearAll();
-                else if (['+','-','*','/'].includes(e.key)) setOperator(e.key);
-                else if (e.key === 'Enter' || e.key === '=') evaluate();
-                else if (e.key === '%') percent();
+                if (e.key >= "0" && e.key <= "9") inputDigit(e.key);
+                else if (e.key === ".") inputDot();
+                else if (e.key === "Backspace") delOne();
+                else if (e.key === "Escape") clearAll();
+                else if (["+", "-", "*", "/"].includes(e.key)) setOperator(e.key);
+                else if (e.key === "Enter" || e.key === "=") evaluate();
+                else if (e.key === "%") percent();
             });
         }
 
-        // Initialize the app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener("DOMContentLoaded", init);
     </script>
 </body>
 </html>
